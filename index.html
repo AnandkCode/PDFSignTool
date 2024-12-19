@@ -16,6 +16,9 @@
     <meta name="twitter:description" content="Sign PDF documents online instantly. No registration required. 100% free and secure.">
     <link rel="canonical" href="https://signpdfonline.app">
     <link rel="stylesheet" href="styles.css">
+    <!-- Add pdf-lib and fabric.js before app.js -->
+    <script src="pdf-lib.min.js"></script>
+    <script src="fabric.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -23,11 +26,6 @@
             <h1>SignPDFOnline.app</h1>
             <p>Free PDF Signature Tool - No Registration Required</p>
         </header>
-
-        <!-- Ad Space -->
-        <div class="ad-container-top">
-            <!-- AdSense code will go here -->
-        </div>
 
         <div class="main-workspace">
             <section class="upload-section" aria-label="PDF Upload">
@@ -72,11 +70,6 @@
                 </div>
             </section>
 
-            <!-- Ad Space -->
-            <div class="ad-container-middle">
-                <!-- AdSense code will go here -->
-            </div>
-
             <div class="preview-section">
                 <h2>PDF Preview</h2>
                 <div class="pdf-preview" id="pdf-preview" aria-label="PDF Preview">
@@ -100,11 +93,6 @@
                     </button>
                 </div>
             </div>
-        </div>
-
-        <!-- Ad Space -->
-        <div class="ad-container-side">
-            <!-- AdSense code will go here -->
         </div>
 
         <section class="how-to" id="how-to">
@@ -133,11 +121,6 @@
             </div>
         </section>
 
-        <!-- Ad Space -->
-        <div class="ad-container-bottom">
-            <!-- AdSense code will go here -->
-        </div>
-
         <section class="faq">
             <h2>Frequently Asked Questions</h2>
             <div class="faq-item">
@@ -161,7 +144,7 @@
 
     <div class="toast" id="toast" role="alert"></div>
 
-    <!-- Bundled JS -->
+    <!-- Load app.js after the libraries -->
     <script src="app.js"></script>
 </body>
 </html>
