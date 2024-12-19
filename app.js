@@ -1,6 +1,4 @@
-// Initialize the application when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check if required libraries are loaded
     if (typeof PDFLib === 'undefined' || typeof fabric === 'undefined') {
         showToast('Required libraries not loaded. Please check your configuration.', true);
         return;
@@ -18,6 +16,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         downloadPdfBtn: document.getElementById('download-pdf'),
         loadingSpinner: document.getElementById('loading-spinner'),
         signatureSize: document.getElementById('signature-size'),
+        prevPageBtn: document.getElementById('prev-page'),
+        nextPageBtn: document.getElementById('next-page'),
+        currentPageEl: document.getElementById('current-page'),
+        totalPagesEl: document.getElementById('total-pages'),
         toast: document.getElementById('toast')
     };
 
@@ -26,7 +28,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         uploadedPdfDoc: null,
         savedSignature: null,
         isProcessing: false,
-        currentSignatureSize: 150
+        currentSignatureSize: 150,
+        currentPage: 0,
+        totalPages: 0,
+        pdfPages: []
     };
 
     // Initialize signature canvas
@@ -37,7 +42,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         backgroundColor: 'white'
     });
 
-    // Set up drawing brush
     signatureCanvas.freeDrawingBrush = new fabric.PencilBrush(signatureCanvas);
     signatureCanvas.freeDrawingBrush.width = 2;
     signatureCanvas.freeDrawingBrush.color = '#000000';
@@ -61,6 +65,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         elements.saveSignatureBtn.disabled = loading;
     }
 
+    function updatePaginationControls() {
+        elements.currentPageEl.textContent = state.currentPage + 1;
+        elements.totalPagesEl.textContent = state.totalPages;
+        elements.prevPageBtn.disabled = state.currentPage === 0;
+        elements.nextPageBtn.disabled = state.currentPage >= state.totalPages - 1;
+    }
+
+    async function loadPdfPage(pageIndex) {
+        if (!state.pdfPages[pageIndex]) {
+            const page = state.uploadedPdfDoc.getPages()[pageIndex];
+            const scale = 2; // Increased scale for better quality
+            const viewport = page.getSize();
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            
+            canvas.width = viewport.width * scale;
+            canvas.height = viewport.height * scale;
+            
+            // Convert PDF page to PNG with higher quality
+            const pngBytes = await page.translateToBase64({
+                format: 'png',
+                width: canvas.width,
+                height: canvas.height
+            });
+            
+            state.pdfPages[pageIndex] = `data:image/png;base64,${pngBytes}`;
+        }
+        
+        elements.pdfPreview.innerHTML = `
+            <img src="${state.pdfPages[pageIndex]}" 
+                 alt="Page ${pageIndex + 1}" 
+                 style="width: 100%; height: auto;">
+        `;
+    }
+
     // PDF Processing Functions
     async function processPdfUpload(file) {
         if (!file || file.type !== 'application/pdf') {
@@ -69,22 +108,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         setLoading(true);
         elements.uploadError.style.display = 'none';
-        elements.pdfPreview.innerHTML = '<div class="loading">Loading PDF pages...</div>';
+        elements.pdfPreview.innerHTML = '<div class="loading">Loading PDF...</div>';
 
         try {
             const arrayBuffer = await file.arrayBuffer();
             state.uploadedPdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
             
-            // Clear previous preview
-            elements.pdfPreview.innerHTML = '';
+            state.totalPages = state.uploadedPdfDoc.getPageCount();
+            state.currentPage = 0;
+            state.pdfPages = new Array(state.totalPages).fill(null);
             
-            // Process pages
-            const pageCount = state.uploadedPdfDoc.getPageCount();
+            updatePaginationControls();
+            await loadPdfPage(0);
             
-            for (let i = 0; i < pageCount; i++) {
-                await renderPdfPage(i);
-            }
-
             elements.addSignatureBtn.disabled = true;
             elements.downloadPdfBtn.disabled = true;
             
@@ -93,46 +129,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('PDF processing error:', error);
             elements.uploadError.textContent = 'Error processing PDF. Please try a different file.';
             elements.uploadError.style.display = 'block';
-            elements.pdfPreview.innerHTML = '<p class="text-center">Error loading PDF. Please try again.</p>';
+            elements.pdfPreview.innerHTML = '<p class="text-center">Error loading PDF</p>';
         } finally {
             setLoading(false);
         }
-    }
-
-    async function renderPdfPage(pageIndex) {
-        const page = state.uploadedPdfDoc.getPages()[pageIndex];
-        const pageContainer = document.createElement('div');
-        pageContainer.classList.add('page-container');
-        pageContainer.dataset.pageIndex = pageIndex;
-
-        try {
-            // Convert the specific page to PNG
-            const pngBytes = await page.translateToBase64({ format: 'png' });
-            const img = document.createElement('img');
-            img.src = `data:image/png;base64,${pngBytes}`;
-            img.dataset.pageIndex = pageIndex;
-            img.alt = `Page ${pageIndex + 1}`;
-            
-            pageContainer.appendChild(img);
-            elements.pdfPreview.appendChild(pageContainer);
-        } catch (error) {
-            console.error(`Error rendering page ${pageIndex + 1}:`, error);
-            showToast(`Error rendering page ${pageIndex + 1}`, true);
-        }
-    }
-
-    // Signature Functions
-    function createSignatureSVG() {
-        return signatureCanvas.toSVG({
-            width: state.currentSignatureSize,
-            height: (state.currentSignatureSize * signatureCanvas.height) / signatureCanvas.width,
-            viewBox: {
-                x: 0,
-                y: 0,
-                width: signatureCanvas.width,
-                height: signatureCanvas.height
-            }
-        });
     }
 
     // Event Listeners
@@ -143,6 +143,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    elements.prevPageBtn.addEventListener('click', async () => {
+        if (state.currentPage > 0) {
+            state.currentPage--;
+            await loadPdfPage(state.currentPage);
+            updatePaginationControls();
+        }
+    });
+
+    elements.nextPageBtn.addEventListener('click', async () => {
+        if (state.currentPage < state.totalPages - 1) {
+            state.currentPage++;
+            await loadPdfPage(state.currentPage);
+            updatePaginationControls();
+        }
+    });
+
+    // ... (rest of your existing event listeners for signature handling)
     elements.clearSignatureBtn.addEventListener('click', () => {
         signatureCanvas.clear();
         signatureCanvas.backgroundColor = 'white';
+        state.savedSignature = null;
+        elements.addSignatureBtn.disabled = true;
+        showToast('Signature cleared');
+    });
+
+    elements.saveSignatureBtn.addEventListener('click', () => {
+        if (signatureCanvas.getObjects().length > 0) {
+            state.savedSignature = signatureCanvas.toDataURL();
+            elements.addSignatureBtn.disabled = false;
+            showToast('Signature saved');
+        } else {
+            showToast('Please draw a signature first', true);
+        }
+    });
+
+    // Handle window resize
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            signatureCanvas.setDimensions({
+                width: elements.signatureCanvasEl.offsetWidth,
+                height: elements.signatureCanvasEl.offsetHeight
+            });
+        }, 250);
+    });
+});
