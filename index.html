@@ -3,20 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SignPDFOnline.app | Free PDF Signature Tool | No Registration Required</title>
-    <meta name="description" content="Sign PDF documents online instantly at SignPDFOnline.app. No registration, no email required. Free, secure, and easy-to-use PDF signing tool. Works on all devices.">
-    <meta name="keywords" content="sign pdf online, free pdf signature, digital signature pdf, electronic signature, pdf signer, online pdf signature, sign documents online, SignPDFOnline.app">
-    <meta name="robots" content="index, follow">
-    <meta property="og:title" content="SignPDFOnline.app - Free PDF Signature Tool">
-    <meta property="og:description" content="Sign PDF documents online instantly. No registration required. 100% free and secure.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://signpdfonline.app">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="SignPDFOnline.app - Free PDF Signature Tool">
-    <meta name="twitter:description" content="Sign PDF documents online instantly. No registration required. 100% free and secure.">
-    <link rel="canonical" href="https://signpdfonline.app">
+    <title>SignPDFOnline.app | Free PDF Signature Tool</title>
+    <meta name="description" content="Sign PDF documents online instantly at SignPDFOnline.app. No registration required.">
     <link rel="stylesheet" href="styles.css">
-    <!-- Add pdf-lib and fabric.js before app.js -->
+    <style>
+        .main-workspace {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            min-height: 600px;
+        }
+
+        .left-panel {
+            flex: 0 0 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0; /* Prevents flex item from overflowing */
+        }
+
+        .signature-section {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .preview-section {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pdf-preview {
+            flex: 1;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .pagination button {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .pagination button:disabled {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        .page-number {
+            margin: 0 10px;
+        }
+
+        #signature-canvas {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            width: 100%;
+            height: 200px;
+        }
+    </style>
     <script src="pdf-lib.min.js"></script>
     <script src="fabric.min.js"></script>
 </head>
@@ -24,127 +91,51 @@
     <div class="container">
         <header class="header">
             <h1>SignPDFOnline.app</h1>
-            <p>Free PDF Signature Tool - No Registration Required</p>
+            <div class="upload-section">
+                <input type="file" id="pdf-upload" accept=".pdf" />
+                <label for="pdf-upload" class="upload-label">Select PDF File</label>
+                <div id="upload-error" class="error-message"></div>
+                <div id="loading-spinner" class="loading-spinner"></div>
+            </div>
         </header>
 
         <div class="main-workspace">
-            <section class="upload-section" aria-label="PDF Upload">
-                <h2>Upload Your PDF</h2>
-                <input type="file" id="pdf-upload" accept=".pdf" aria-label="Upload PDF file" />
-                <label for="pdf-upload" class="upload-label" role="button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    Select PDF File
-                </label>
-                <div id="upload-error" class="error-message" role="alert"></div>
-                <div class="loading-spinner" id="loading-spinner"></div>
-            </section>
-
-            <section class="signature-section">
-                <h2>Create Your Signature</h2>
-                <div class="signature-container">
-                    <canvas id="signature-canvas" aria-label="Signature Drawing Canvas"></canvas>
+            <div class="left-panel">
+                <section class="signature-section">
+                    <h2>Create Signature</h2>
+                    <canvas id="signature-canvas"></canvas>
                     <div class="signature-controls">
-                        <button id="clear-signature" class="btn" aria-label="Clear signature">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3-3h6M6 6h12"></path>
-                            </svg>
-                            Clear
-                        </button>
-                        <button id="save-signature" class="btn" aria-label="Save signature">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                <polyline points="7 3 7 8 15 8"></polyline>
-                            </svg>
-                            Save
-                        </button>
+                        <button id="clear-signature" class="btn">Clear</button>
+                        <button id="save-signature" class="btn">Save</button>
                     </div>
                     <div class="signature-size-controls">
-                        <label for="signature-size">Signature Size:</label>
+                        <label for="signature-size">Size:</label>
                         <input type="range" id="signature-size" min="50" max="300" value="150">
                     </div>
-                </div>
-            </section>
+                </section>
+            </div>
 
-            <div class="preview-section">
-                <h2>PDF Preview</h2>
-                <div class="pdf-preview" id="pdf-preview" aria-label="PDF Preview">
-                    <p class="text-center">Your PDF pages will appear here after upload</p>
-                </div>
-
-                <div class="pdf-actions">
-                    <button id="add-signature" class="btn" disabled aria-label="Add signature to PDF">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 5v14M5 12h14"></path>
-                        </svg>
-                        Add Signature
-                    </button>
-                    <button id="download-pdf" class="btn" disabled aria-label="Download signed PDF">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
-                        Download
-                    </button>
-                </div>
+            <div class="right-panel">
+                <section class="preview-section">
+                    <h2>PDF Preview</h2>
+                    <div class="pdf-preview" id="pdf-preview">
+                        <p class="text-center">Upload a PDF to begin</p>
+                    </div>
+                    <div class="pagination">
+                        <button id="prev-page" disabled>Previous</button>
+                        <span class="page-number">Page <span id="current-page">0</span> of <span id="total-pages">0</span></span>
+                        <button id="next-page" disabled>Next</button>
+                    </div>
+                    <div class="pdf-actions">
+                        <button id="add-signature" class="btn" disabled>Add Signature</button>
+                        <button id="download-pdf" class="btn" disabled>Download</button>
+                    </div>
+                </section>
             </div>
         </div>
 
-        <section class="how-to" id="how-to">
-            <h2>How to Sign PDF Documents Online</h2>
-            <div class="steps-container">
-                <div class="step">
-                    <div class="step-number">1</div>
-                    <h3>Upload Your PDF</h3>
-                    <p>Click "Select PDF File" and choose your document. Your file stays private and never leaves your device.</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <h3>Create Signature</h3>
-                    <p>Draw your signature using your mouse or touchscreen. Adjust the size using the slider.</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <h3>Place Signature</h3>
-                    <p>Click where you want to add your signature in the document. Drag to adjust position and size.</p>
-                </div>
-                <div class="step">
-                    <div class="step-number">4</div>
-                    <h3>Download Signed PDF</h3>
-                    <p>Click "Download" to save your signed PDF. Your document is ready to use!</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="faq">
-            <h2>Frequently Asked Questions</h2>
-            <div class="faq-item">
-                <h3>Is SignPDFOnline.app really free?</h3>
-                <p>Yes! SignPDFOnline.app is completely free to use with no hidden costs or limitations. Sign as many documents as you need.</p>
-            </div>
-            <div class="faq-item">
-                <h3>Is my document secure?</h3>
-                <p>Absolutely! Your PDF never leaves your device. All processing happens locally in your browser, ensuring complete privacy and security.</p>
-            </div>
-            <div class="faq-item">
-                <h3>What devices can I use?</h3>
-                <p>SignPDFOnline.app works on any device with a web browser - computers, tablets, and smartphones.</p>
-            </div>
-            <div class="faq-item">
-                <h3>Do I need to create an account?</h3>
-                <p>No registration required! Just upload your PDF and start signing immediately.</p>
-            </div>
-        </section>
+        <div class="toast" id="toast" role="alert"></div>
     </div>
-
-    <div class="toast" id="toast" role="alert"></div>
-
-    <!-- Load app.js after the libraries -->
     <script src="app.js"></script>
 </body>
 </html>
